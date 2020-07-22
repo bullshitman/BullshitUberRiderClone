@@ -65,7 +65,7 @@
         android:id="@+id/btn_continue"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        style="@style/Widget.MaterialComponents.Button"
+        style="@style/Widget.AppCompat.Button.Colored"
         android:text="@string/continue_text"
         android:layout_margin="16dp"
         android:layout_alignParentBottom="true">

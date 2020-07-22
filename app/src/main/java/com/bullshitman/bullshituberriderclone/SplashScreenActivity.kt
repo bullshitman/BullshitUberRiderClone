@@ -119,12 +119,12 @@ class SplashScreenActivity : AppCompatActivity() {
     }
 
     private fun showRegisterLayout() {
-        val builder = AlertDialog.Builder(this, com.google.firebase.database.R.style.DialogTheme)
-        val itemView = LayoutInflater.from(this).inflate(com.google.firebase.database.R.layout.layout_register, null)
-        val firstName = itemView.findViewById<View>(com.google.firebase.database.R.id.edit_first_name) as TextInputEditText
-        val lastName = itemView.findViewById<View>(com.google.firebase.database.R.id.edit_last_name) as TextInputEditText
-        val phoneNumber = itemView.findViewById<View>(com.google.firebase.database.R.id.edit_phone_number) as TextInputEditText
-        val continueBtn = itemView.findViewById<View>(com.google.firebase.database.R.id.btn_continue) as Button
+        val builder = AlertDialog.Builder(this, R.style.DialogTheme)
+        val itemView = LayoutInflater.from(this).inflate(R.layout.layout_register, null)
+        val firstName = itemView.findViewById<View>(R.id.edit_first_name) as TextInputEditText
+        val lastName = itemView.findViewById<View>(R.id.edit_last_name) as TextInputEditText
+        val phoneNumber = itemView.findViewById<View>(R.id.edit_phone_number) as TextInputEditText
+        val continueBtn = itemView.findViewById<View>(R.id.btn_continue) as Button
 
         if (FirebaseAuth.getInstance().currentUser!!.phoneNumber != null && TextUtils.isDigitsOnly(FirebaseAuth.getInstance().currentUser!!.phoneNumber)) {
             phoneNumber.setText(FirebaseAuth.getInstance().currentUser!!.phoneNumber)
@@ -147,7 +147,7 @@ class SplashScreenActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
                 else -> {
-                    val model = DriverInfoModel()
+                    val model = RiderModel()
                     model.firstName = firstName.text.toString()
                     model.lastName = lastName.text.toString()
                     model.phoneNumber = phoneNumber.text.toString()
