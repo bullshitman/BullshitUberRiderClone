@@ -1,13 +1,14 @@
 package com.bullshitman.bullshituberriderclone
 
+import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.Menu
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.navigation.NavigationView
 import androidx.navigation.findNavController
@@ -20,8 +21,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.bullshitman.bullshituberriderclone.utils.UserUtils
 import com.bullshitman.bullshituberriderclone.common.Common
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.storage.StorageReference
+
+private const val PICK_IMAGE_REQUEST = 7777
 
 class HomeActivity : AppCompatActivity() {
 
@@ -30,6 +37,9 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navController: NavController
     private lateinit var imageAvatar: ImageView
+    private lateinit var waitingDialog: AlertDialog
+    private lateinit var storageReference: StorageReference
+    private var imageUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +63,10 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun init() {
+        storageReference = FirebaseStorage.getInstance().getReference()
+        waitingDialog = AlertDialog.Builder(this)
+            .setMessage("Waiting..")
+            .setCancelable(false).create()
         navView.setNavigationItemSelectedListener { item ->
             if (item.itemId == R.id.nav_sign_out) {
                 val builder = AlertDialog.Builder(this@HomeActivity)
@@ -87,6 +101,21 @@ class HomeActivity : AppCompatActivity() {
         imageAvatar = headerView.findViewById<View>(R.id.image_avatar) as ImageView
         textName.text = Common.buildWelcomeMessage()
         textPhone.text = Common.currentRider!!.phoneNumber
+
+        if (Common.currentRider != null && Common.currentRider!!.imageAvatar != null && !Common.currentRider!!.imageAvatar.isBlank()) {
+            Glide.with(this)
+                .load(Common.currentRider!!.imageAvatar)
+                .into(imageAvatar)
+        }
+
+        imageAvatar.setOnClickListener {
+            val intent = Intent()
+            with(intent) {
+                setType("image/*")
+                setAction(Intent.ACTION_GET_CONTENT)
+            }
+            startActivityForResult(Intent.createChooser(intent, "Select a picture"), PICK_IMAGE_REQUEST)
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -98,5 +127,59 @@ class HomeActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean {
         val navController = findNavController(R.id.nav_host_fragment)
         return navController.navigateUp(appBarConfiguration) || super.onSupportNavigateUp()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK) {
+            if (data != null) {
+                imageUri = data.data
+                imageAvatar.setImageURI(imageUri)
+                showUploadDialog()
+            }
+        }
+    }
+
+    private fun showUploadDialog() {
+        val builder = AlertDialog.Builder(this@HomeActivity)
+        with(builder) {
+            setTitle("Change avatar")
+            setMessage("Do you really want to change avatar?")
+            setNegativeButton("Cancel") { dialogInterface, _ ->  dialogInterface.dismiss()}
+            setPositiveButton("OK") { _, _ ->
+                if (imageUri != null) {
+                    waitingDialog.show()
+                    val avatarFolder = storageReference.child("avatars/${FirebaseAuth.getInstance().currentUser?.uid}")
+                    avatarFolder.putFile(imageUri!!)
+                        .addOnFailureListener { e ->
+                            Snackbar.make(drawerLayout, e.message!!, Snackbar.LENGTH_LONG).show()
+                        }
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                avatarFolder.downloadUrl.addOnSuccessListener { uri ->
+                                    val update_data = HashMap<String, Any>()
+                                    update_data.put("imageAvatar", uri.toString())
+                                    UserUtils.updateUserInfo(drawerLayout, update_data)
+                                }
+                            }
+                            waitingDialog.dismiss()
+                        }
+                        .addOnProgressListener { taskSnapshot ->
+                            val progress = 100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount
+                            waitingDialog.setMessage("Uploading: $progress%")
+                        }
+                }
+            }.setCancelable(false)
+        }
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            with(dialog) {
+                getButton(AlertDialog.BUTTON_POSITIVE)
+                    .setTextColor(ContextCompat.getColor(this@HomeActivity, android.R.color.holo_red_dark))
+                getButton(AlertDialog.BUTTON_NEGATIVE)
+                    .setTextColor(ContextCompat.getColor(this@HomeActivity, R.color.colorAccent))
+            }
+        }
+        dialog.show()
     }
 }
